@@ -1,76 +1,85 @@
-import { searchImages } from './js/pixabay-api';
 // Описаний у документації
 import iziToast from 'izitoast';
 // Додатковий імпорт стилів
 import 'izitoast/dist/css/iziToast.min.css';
 
-document.addEventListener('DOMContentLoaded', () => {
+// Описаний у документації
+import SimpleLightbox from 'simplelightbox';
+// Додатковий імпорт стилів
+import 'simplelightbox/dist/simple-lightbox.min.css';
+
+import { searchImages } from './js/pixabay-api';
+import { createGalleryMarkup } from './js/render-functions';
+
+document.addEventListener('DOMContentLoaded', initializeEventListeners);
+
+function initializeEventListeners() {
   document
-    .getElementById('search-button')
-    .addEventListener('click', async () => {
-      const query = document.getElementById('search-input').value;
-      const gallery = document.getElementById('gallery');
+    .getElementById('search-form')
+    .addEventListener('submit', onSearchFormSubmit);
+}
 
-      gallery.innerHTML = 'Loading...';
+async function onSearchFormSubmit(event) {
+  event.preventDefault();
 
-      try {
-        const images = await searchImages(query);
+  const query = getQuery();
+  if (query === '') {
+    displayEmptyQueryError();
+    return;
+  }
 
-        gallery.innerHTML = '';
+  const gallery = document.getElementById('gallery');
+  setGalleryLoading(gallery);
 
-        if (images.length > 0) {
-          const galleryMarkup = images
-            .map(
-              ({
-                webformatURL,
-                user,
-                largeImageURL,
-                views,
-                downloads,
-                likes,
-                comments,
-              }) => {
-                return `
-        <li class="gallery-item">
-          <a class="gallery-link" href="${largeImageURL}">
-            <img class="gallery-image" src="${webformatURL}" alt="${user}" />
-          </a>
-          <div class="gallery-item-description">
-            <label>
-              Likes
-              <span>${likes}</span>
-            </label>
+  try {
+    const images = await searchImages(query);
+    updateGallery(gallery, images);
+  } catch (error) {
+    handleError(error);
+  }
+}
 
-            <label>
-              Views
-              <span>${views}</span>
-            </label>
+function getQuery() {
+  return document.getElementById('search-input').value;
+}
 
-            <label>
-              Comments
-              <span>${comments}</span>
-            </label>
+function setGalleryLoading(gallery) {
+  gallery.innerHTML = `<span class="loader"></span>`;
+}
 
-            <label>
-              Downloads
-              <span>${downloads}</span>
-            </label>
-          </div>
-        </li>
-            `;
-              }
-            )
-            .join('');
+function updateGallery(gallery, images) {
+  gallery.innerHTML = '';
 
-          gallery.innerHTML = galleryMarkup;
-        } else {
-          iziToast.error({
-            message: `Sorry, there are no images matching your search query. Please try again!`,
-            position: 'topRight',
-          });
-        }
-      } catch (error) {
-        console.error('Помилка при виконанні запиту:', error);
-      }
-    });
-});
+  if (images.length > 0) {
+    const galleryMarkup = createGalleryMarkup(images);
+    gallery.innerHTML = galleryMarkup;
+
+    const lightbox = new SimpleLightbox('.gallery a');
+    lightbox.refresh();
+  } else {
+    displayNoImagesError();
+    clearQuery();
+  }
+}
+
+function displayNoImagesError() {
+  iziToast.error({
+    message: `Sorry, there are no images matching your search query. Please try again!`,
+    position: 'topRight',
+  });
+}
+
+function displayEmptyQueryError() {
+  iziToast.error({
+    message: `Sorry, search input cannot be empty!`,
+    position: 'topRight',
+  });
+}
+
+function handleError(error) {
+  console.error('Помилка при виконанні запиту:', error);
+}
+
+function clearQuery() {
+  document.getElementById('search-input').value = '';
+}
