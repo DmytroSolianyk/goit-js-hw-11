@@ -32,10 +32,11 @@ async function onSearchFormSubmit(event) {
   setGalleryLoading(gallery);
 
   try {
-    const images = await searchImages(query);
+    const images = await searchImages(query.trim());
     updateGallery(gallery, images);
   } catch (error) {
     handleError(error);
+    gallery.innerHTML = '';
   }
 }
 
@@ -77,7 +78,10 @@ function displayEmptyQueryError() {
 }
 
 function handleError(error) {
-  console.error('Помилка при виконанні запиту:', error);
+  iziToast.error({
+    message: error.code,
+    position: 'topRight',
+  });
 }
 
 function clearQuery() {
